@@ -608,6 +608,8 @@ class Pymarketcap(object):
             response['twitter'] = self._select(html, 'img[alt=Twitter] + a', 'href')
 
         for m in marks[1:]:
+            exclude_price = False
+            exclude_volume = False
             _childs, childs = (m.contents, [])
             for c in _childs:
                 if c != '\n':
@@ -620,11 +622,25 @@ class Pymarketcap(object):
                 elif n == 2:
                     market = c.getText().replace('/', self.pair_separator)
                 elif n == 3:
-                    _volume_24h_usd = c.getText().replace(" ", "").replace("*", "")
+                    _volume_24h_usd = c.getText()
+                    if "***" in _volume_24h_usd:
+                        exclude_price = True
+                        exclude_volume = True
+                    elif "**" in _volume_24h_usd:
+                        exclude_volume = True
+
+                    _volume_24h_usd = _volume_24h_usd.replace(" ", "").replace("*", "")
                     _volume_24h_usd = _volume_24h_usd.replace("$", "").replace(",", "")
                     volume_24h_usd = self.parse_int(_volume_24h_usd)
                 elif n == 4:
-                    _price_usd = c.getText().replace("$", "").replace("*", "")
+                    _price_usd = c.getText()
+                    if "***" in _price_usd:
+                        exclude_price = True
+                        exclude_volume = True
+                    elif "*" in _price_usd:
+                        exclude_price = True
+
+                    _price_usd = _price_usd.replace("$", "").replace("*", "")
                     _price_usd = _price_usd.replace(",", "")
                     price_usd = self.parse_float(_price_usd.replace(" ", ""))
                 elif n == 5:
@@ -635,7 +651,9 @@ class Pymarketcap(object):
                           'market': market,
                           'volume_24h_usd': volume_24h_usd,
                           'price_usd': price_usd,
-                          'perc_volume': perc_volume}
+                          'perc_volume': perc_volume,
+                          'exclude_price': exclude_price,
+                          'exclude_volume': exclude_volume}
             markets = response['markets'] if metadata else response
 
             markets.append(indicators)

@@ -11,8 +11,8 @@ from decimal import Decimal
 from config import ConfigTest
 from pymarketcap import Pymarketcap
 
-
 """ ############  SCRAPER TESTS  ############## """
+
 
 class TestScraperCoinmarketcap(unittest.TestCase):
     """
@@ -20,6 +20,7 @@ class TestScraperCoinmarketcap(unittest.TestCase):
     These will fail in the absence of an internet
     connection or if coinmarketcap.com goes down.
     """
+
     def __init__(self, *args, **kwargs):
         super(TestScraperCoinmarketcap, self).__init__(*args, **kwargs)
         self.coinmarketcap = Pymarketcap()
@@ -123,17 +124,19 @@ class TestScraperCoinmarketcap(unittest.TestCase):
             self.config.EXCHANGE, metadata=True
         )
 
-        value_types= {'formatted_name': str,
-                      'website': str,
-                      'twitter': str,
-                      'markets': list}
+        value_types = {'formatted_name': str,
+                       'website': str,
+                       'twitter': str,
+                       'markets': list}
 
         markets_value_types = {'market': str,
-                       'price_usd': Decimal,
-                       'rank': int,
-                       'volume_24h_usd': int,
-                       'name': str,
-                       'perc_volume': Decimal}
+                               'price_usd': Decimal,
+                               'rank': int,
+                               'volume_24h_usd': int,
+                               'name': str,
+                               'perc_volume': Decimal,
+                               "exclude_price": bool,
+                               "exclude_volume": bool, }
 
         self.assertIs(type(actual), list)
 
@@ -174,6 +177,7 @@ class TestScraperCoinmarketcap(unittest.TestCase):
                         for _key, _value in m.items():
                             self.assertIs(type(_value),
                                           value_types[_key])
+
     def test_exchange_names(self):
         actual = self.coinmarketcap.exchange_names
         self.assertIs(type(actual), list)
