@@ -264,13 +264,15 @@ class Pymarketcap(object):
         else:
             raise CoinmarketcapHTTPError(status_code, url)
 
-    def _select(self, html, selector, attribute=None):
+    def _select(self, html, selector, attribute=None, raise_err=False):
         """Internal function to avoid redundant error checking code when
         using CSS selectors."""
         try:
             el = html.select(selector)[0]
             return el[attribute].strip() if attribute else el.getText().strip()
-        except (IndexError, KeyError):
+        except (IndexError, KeyError) as err:
+            if raise_err:
+                raise err
             return None
 
     def markets(self, currency):
@@ -632,6 +634,11 @@ class Pymarketcap(object):
                     _volume_24h_usd = _volume_24h_usd.replace(" ", "").replace("*", "")
                     _volume_24h_usd = _volume_24h_usd.replace("$", "").replace(",", "")
                     volume_24h_usd = self.parse_int(_volume_24h_usd)
+
+                    volume_24h_native = self.parse_float(
+                        self._select(c, '.volume', 'data-native', True).replace('?', '0'))
+                    volume_24h_btc = self.parse_float(
+                        self._select(c, '.volume', 'data-btc', True).replace('?', '0'))
                 elif n == 4:
                     _price_usd = c.getText()
                     if "***" in _price_usd:
@@ -643,6 +650,11 @@ class Pymarketcap(object):
                     _price_usd = _price_usd.replace("$", "").replace("*", "")
                     _price_usd = _price_usd.replace(",", "")
                     price_usd = self.parse_float(_price_usd.replace(" ", ""))
+
+                    price_native = self.parse_float(
+                        self._select(c, '.price', 'data-native', True).replace('?', '0'))
+                    price_btc = self.parse_float(
+                        self._select(c, '.price', 'data-btc', True).replace('?', '0'))
                 elif n == 5:
                     _perc_volume = c.getText().replace('%', '')
                     perc_volume = self.parse_float(_perc_volume)
@@ -650,7 +662,11 @@ class Pymarketcap(object):
                           'name': name,
                           'market': market,
                           'volume_24h_usd': volume_24h_usd,
+                          'volume_24h_btc': volume_24h_btc,
+                          'volume_24h_native': volume_24h_native,
                           'price_usd': price_usd,
+                          'price_btc': price_btc,
+                          'price_native': price_native,
                           'perc_volume': perc_volume,
                           'exclude_price': exclude_price,
                           'exclude_volume': exclude_volume}
