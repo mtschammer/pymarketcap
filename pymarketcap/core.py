@@ -298,11 +298,37 @@ class Pymarketcap(object):
         marks = html.find(id="markets-table").find("tbody").find_all('tr')
 
         for m in marks:
+            exclude_price = False
+            exclude_volume = False
             _volume_24h = m.find(class_="volume").getText()
+            if "***" in _volume_24h:
+                exclude_price = True
+                exclude_volume = True
+            elif "**" in _volume_24h:
+                exclude_volume = True
+
             _volume_24h = _volume_24h.replace("*", "").replace(".", "").replace(",", "")
             volume_24h = self.parse_int(_volume_24h.replace("$", "").replace("\n", ""))
+            volume_24h_native = self.parse_float(
+                self._select(m, '.volume', 'data-native', True).replace('?','0'))
+            volume_24h_btc = self.parse_float(self._select(
+                m, '.volume', 'data-btc', True).replace('?', '0'))
+
             _price = m.find(class_="price").getText()
+            if "***" in _price:
+                exclude_price = True
+                exclude_volume = True
+            elif "*" in _price:
+                exclude_price = True
+
             _price = _price.replace("$", "").replace(" ", "").replace("*", "")
+
+            price_native = self.parse_float(
+                self._select(m, '.price', 'data-native', True).replace('?',
+                                                                       '0'))
+            price_btc = self.parse_float(
+                self._select(m, '.price', 'data-btc', True).replace('?', '0'))
+
             price = self.parse_float(_price.replace(",", ""))
             pair_exc = m.find_all("a")
             exchange = pair_exc[0].getText()
@@ -314,9 +340,15 @@ class Pymarketcap(object):
 
             market = {'exchange': exchange, 'pair': pair,
                       '24h_volume_usd': volume_24h,
+                      '24h_volume_native': volume_24h_native,
+                      '24h_volume_btc': volume_24h_btc,
                       'price_usd': price,
+                      'price_native': price_native,
+                      'price_btc': price_btc,
                       'percent_volume': percent_volume,
-                      "updated": updated}
+                      "updated": updated,
+                      'exclude_price': exclude_price,
+                      'exclude_volume': exclude_volume}
             response.append(market)
 
         return response

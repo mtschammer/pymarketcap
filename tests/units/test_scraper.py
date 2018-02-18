@@ -33,11 +33,18 @@ class TestScraperCoinmarketcap(unittest.TestCase):
     def test_markets(self):
         actual = self.coinmarketcap.markets(self.config.COIN)
         value_types = {'price_usd': Decimal,
+                       'price_native': Decimal,
+                       'price_btc': Decimal,
                        '24h_volume_usd': int,
+                       '24h_volume_native': Decimal,
+                       '24h_volume_btc': Decimal,
                        'percent_volume': Decimal,
                        'pair': str,
                        'exchange': str,
-                       'updated': bool}
+                       'updated': bool,
+                       "exclude_price": bool,
+                       "exclude_volume": bool,
+                       }
 
         self.assertIs(type(actual), list)
         self.assertIs(len(actual) > 0, True)
@@ -131,8 +138,12 @@ class TestScraperCoinmarketcap(unittest.TestCase):
 
         markets_value_types = {'market': str,
                                'price_usd': Decimal,
+                               'price_native': Decimal,
+                               'price_btc': Decimal,
                                'rank': int,
                                'volume_24h_usd': int,
+                               'volume_24h_btc': Decimal,
+                               'volume_24h_native': Decimal,
                                'name': str,
                                'perc_volume': Decimal,
                                "exclude_price": bool,
