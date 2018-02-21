@@ -9,6 +9,7 @@ from datetime import datetime
 from re import sub
 from re import compile as re_compile
 from decimal import Decimal, InvalidOperation
+
 try:
     from json import loads
 except ImportError:
@@ -31,7 +32,8 @@ from .errors import (
 )
 
 # Global variables
-ANY_REG = re_compile(r".*") # Any value regex
+ANY_REG = re_compile(r".*")  # Any value regex
+
 
 class Pymarketcap(object):
     """Main class for retrieve data from coinmarketcap.com
@@ -50,6 +52,7 @@ class Pymarketcap(object):
             See http://docs.python-requests.org/en/master/user/advanced/#proxies
             for details. As default {}.
     """
+
     def __init__(self, parse_float=Decimal,
                  parse_int=int, pair_separator="-",
                  timeout=20, proxies=None):
@@ -74,7 +77,6 @@ class Pymarketcap(object):
 
         # Graphs API sugar syntax
         self.graphs = type("Graphs", (), self._graphs_interface)
-
 
     ######   RUNTIME INIT   #######
 
@@ -211,7 +213,8 @@ class Pymarketcap(object):
                         raise error
                     else:
                         if msg == "id not found":
-                            raise CoinmarketcapCurrencyNotFoundError(currency, url)
+                            raise CoinmarketcapCurrencyNotFoundError(currency,
+                                                                     url)
 
                         else:
                             raise Exception(data["error"])
@@ -221,7 +224,6 @@ class Pymarketcap(object):
             response = loads(sub(r'"(\d+(?:\.\d+)?)"', r"\1", req.text))
 
         return response
-
 
     def stats(self):
         """ Get global cryptocurrencies statistics.
@@ -238,7 +240,6 @@ class Pymarketcap(object):
             raise CoinmarketcapHTTPError(req.status_code,
                                          "%s not found" % url)
         return response
-
 
     #######    WEB PARSER METHODS    #######
 
@@ -307,10 +308,13 @@ class Pymarketcap(object):
             elif "**" in _volume_24h:
                 exclude_volume = True
 
-            _volume_24h = _volume_24h.replace("*", "").replace(".", "").replace(",", "")
-            volume_24h = self.parse_int(_volume_24h.replace("$", "").replace("\n", ""))
+            _volume_24h = _volume_24h.replace("*", "").replace(".", "").replace(
+                ",", "")
+            volume_24h = self.parse_int(
+                _volume_24h.replace("$", "").replace("\n", ""))
             volume_24h_native = self.parse_float(
-                self._select(m, '.volume', 'data-native', True).replace('?','0'))
+                self._select(m, '.volume', 'data-native', True).replace('?',
+                                                                        '0'))
             volume_24h_btc = self.parse_float(self._select(
                 m, '.volume', 'data-btc', True).replace('?', '0'))
 
@@ -334,8 +338,10 @@ class Pymarketcap(object):
             exchange = pair_exc[0].getText()
             pair = pair_exc[1].getText()
 
-            _percent_volume = m.find("span", {"data-format-percentage": ANY_REG})
-            percent_volume = self.parse_float(_percent_volume.getText().replace("%", ""))
+            _percent_volume = m.find("span",
+                                     {"data-format-percentage": ANY_REG})
+            percent_volume = self.parse_float(
+                _percent_volume.getText().replace("%", ""))
             updated = m.find(class_=updated_field_reg).getText() == "Recently"
 
             market = {'exchange': exchange, 'pair': pair,
@@ -401,7 +407,7 @@ class Pymarketcap(object):
         all_temps = ['1h', '24h', '7d']
         all_queries = ['gainers', 'losers']
 
-        if not args:   # if len(args) == 0
+        if not args:  # if len(args) == 0
             temps, queries = (all_temps, all_queries)
         else:
             temps, queries = ([], [])
@@ -468,7 +474,7 @@ class Pymarketcap(object):
         marks = html.find('tbody').find_all('tr')
 
         for m in marks:
-            insert = True # Ignore all dates not in range
+            insert = True  # Ignore all dates not in range
             _childs, childs = (m.contents, [])
             for c in _childs:
                 if c != '\n':
@@ -480,7 +486,7 @@ class Pymarketcap(object):
                     try:
                         date = datetime.strptime(_date, '%b %d %Y')
                     except ValueError:
-                        date = _date #datetime.strptime('Jan 01 0001', '%b %d %Y')
+                        date = _date  # datetime.strptime('Jan 01 0001', '%b %d %Y')
                     else:
                         if date < start or date > end:
                             insert = False
@@ -550,26 +556,32 @@ class Pymarketcap(object):
                     except ValueError:
                         pass
                 elif n == 3:
-                    _usd_market_cap = c.getText().replace('\n', '').replace("$", "")
-                    usd_market_cap = _usd_market_cap.replace(' ', '').replace(",", "")
+                    _usd_market_cap = c.getText().replace('\n', '').replace("$",
+                                                                            "")
+                    usd_market_cap = _usd_market_cap.replace(' ', '').replace(
+                        ",", "")
                 elif n == 4:
                     price_usd = c.getText()
                     try:
-                        price_usd = self.parse_float(sub(r' |\$|\n', '', price_usd))
+                        price_usd = self.parse_float(
+                            sub(r' |\$|\n', '', price_usd))
                     except InvalidOperation:
                         pass
                 elif n == 5:
-                    circulating_supply = c.getText().replace('\n', '').replace(' ', '')
+                    circulating_supply = c.getText().replace('\n', '').replace(
+                        ' ', '')
                     if '*' in circulating_supply:
                         circulating_supply = circulating_supply.replace('*', '')
                         mineable = True
                     else:
                         mineable = False
                     if '?' not in circulating_supply:
-                        _circulating_supply = circulating_supply.replace(',', '')
+                        _circulating_supply = circulating_supply.replace(',',
+                                                                         '')
                         circulating_supply = self.parse_int(_circulating_supply)
                 elif n == 6:
-                    _volume_24h_usd = c.getText().replace('\n', '').replace("$", "")
+                    _volume_24h_usd = c.getText().replace('\n', '').replace("$",
+                                                                            "")
                     volume_24h_usd = _volume_24h_usd.replace(",", "")
                     if volume_24h_usd != 'Low Vol':
                         try:
@@ -638,8 +650,10 @@ class Pymarketcap(object):
             }
 
             response['formatted_name'] = self._select(html, 'h1.text-large')
-            response['website'] = self._select(html, 'span[title=Website] + a', 'href')
-            response['twitter'] = self._select(html, 'img[alt=Twitter] + a', 'href')
+            response['website'] = self._select(html, 'span[title=Website] + a',
+                                               'href')
+            response['twitter'] = self._select(html, 'img[alt=Twitter] + a',
+                                               'href')
 
         for m in marks[1:]:
             exclude_price = False
@@ -663,14 +677,18 @@ class Pymarketcap(object):
                     elif "**" in _volume_24h_usd:
                         exclude_volume = True
 
-                    _volume_24h_usd = _volume_24h_usd.replace(" ", "").replace("*", "")
-                    _volume_24h_usd = _volume_24h_usd.replace("$", "").replace(",", "")
+                    _volume_24h_usd = _volume_24h_usd.replace(" ", "").replace(
+                        "*", "")
+                    _volume_24h_usd = _volume_24h_usd.replace("$", "").replace(
+                        ",", "")
                     volume_24h_usd = self.parse_int(_volume_24h_usd)
 
                     volume_24h_native = self.parse_float(
-                        self._select(c, '.volume', 'data-native', True).replace('?', '0'))
+                        self._select(c, '.volume', 'data-native', True).replace(
+                            '?', '0'))
                     volume_24h_btc = self.parse_float(
-                        self._select(c, '.volume', 'data-btc', True).replace('?', '0'))
+                        self._select(c, '.volume', 'data-btc', True).replace(
+                            '?', '0'))
                 elif n == 4:
                     _price_usd = c.getText()
                     if "***" in _price_usd:
@@ -684,9 +702,11 @@ class Pymarketcap(object):
                     price_usd = self.parse_float(_price_usd.replace(" ", ""))
 
                     price_native = self.parse_float(
-                        self._select(c, '.price', 'data-native', True).replace('?', '0'))
+                        self._select(c, '.price', 'data-native', True).replace(
+                            '?', '0'))
                     price_btc = self.parse_float(
-                        self._select(c, '.price', 'data-btc', True).replace('?', '0'))
+                        self._select(c, '.price', 'data-btc', True).replace('?',
+                                                                            '0'))
                 elif n == 5:
                     _perc_volume = c.getText().replace('%', '')
                     perc_volume = self.parse_float(_perc_volume)
@@ -722,7 +742,7 @@ class Pymarketcap(object):
         url = urljoin(self.urls["web"], 'exchanges/volume/24-hour/all/')
         html = self._html(url)
 
-        exs = html.find('table').find_all('tr') # Exchanges
+        exs = html.find('table').find_all('tr')  # Exchanges
         response = []
         for e in exs:
             try:
@@ -740,8 +760,8 @@ class Pymarketcap(object):
                         _childs, childs = (e.contents, [])
                         for c in _childs:
                             if c != '\n' and 'Total' not in str(c) \
-                                        and 'bold text-right volume' not in str(c) \
-                                        and str(c) != '<td></td>':
+                                    and 'bold text-right volume' not in str(c) \
+                                    and str(c) != '<td></td>':
                                 childs.append(c)
                         for n, c in enumerate(childs):
                             if n == 0:
@@ -750,11 +770,13 @@ class Pymarketcap(object):
                                 market = str(c.getText())
                             elif n == 3:
                                 volume_24h_usd = self.parse_int(
-                                    c.getText().replace('$', '').replace(',', '')
+                                    c.getText().replace('$', '').replace(',',
+                                                                         '')
                                 )
                             elif n == 4:
                                 price_usd = self.parse_float(
-                                    c.getText().replace('$', '').replace(',', '')
+                                    c.getText().replace('$', '').replace(',',
+                                                                         '')
                                 )
                             elif n == 5:
                                 perc_change = self.parse_float(
@@ -788,10 +810,10 @@ class Pymarketcap(object):
                 exchange_data['name'] = exchange
                 exchange_data['markets'] = []
 
-                exchange_data['formatted_name'] = self._select(e, '.volume-header a')
+                exchange_data['formatted_name'] = self._select(e,
+                                                               '.volume-header a')
 
         return response
-
 
     #######   GRAPHS API METHODS   #######
 
@@ -799,8 +821,8 @@ class Pymarketcap(object):
     def _parse_start_end(start, end):
         """Internal function for parse start and end datetimes"""
         return (
-            str(int(start.timestamp())*1000),
-            str(int(end.timestamp())*1000)
+            str(int(start.timestamp()) * 1000),
+            str(int(end.timestamp()) * 1000)
         )
 
     @staticmethod
@@ -808,7 +830,6 @@ class Pymarketcap(object):
         """Internal function for add start and end to url"""
         start, end = Pymarketcap._parse_start_end(start, end)
         return "%s/%s/" % (start, end)
-
 
     def currency(self, currency, start=None, end=None):
         """Get graphs data of a currency.
@@ -839,7 +860,8 @@ class Pymarketcap(object):
         if start and end:
             url += Pymarketcap._add_start_end(url, start, end)
 
-        return self.session.get(url, proxies=self.proxies, timeout=self.timeout).json()
+        return self.session.get(url, proxies=self.proxies,
+                                timeout=self.timeout).json()
 
     def global_cap(self, bitcoin=True, start=None, end=None):
         """Get global market capitalization graphs, including
@@ -867,7 +889,8 @@ class Pymarketcap(object):
         if start and end:
             url += Pymarketcap._add_start_end(url, start, end)
 
-        return self.session.get(url, proxies=self.proxies, timeout=self.timeout).json()
+        return self.session.get(url, proxies=self.proxies,
+                                timeout=self.timeout).json()
 
     def dominance(self, start=None, end=None):
         """Get currencies dominance percentage graph
@@ -886,7 +909,20 @@ class Pymarketcap(object):
         if start and end:
             url += Pymarketcap._add_start_end(url, start, end)
 
-        return self.session.get(url, proxies=self.proxies, timeout=self.timeout).json()
+        return self.session.get(url, proxies=self.proxies,
+                                timeout=self.timeout).json()
+
+    def coin_id(self, coin):
+        if self._is_symbol(coin):
+            currency = self.correspondences[coin]
+
+        coin_url = "https://coinmarketcap.com/currencies/{}/".format(coin)
+
+        html = self._html(coin_url)
+        logo_url = self._select(html, '.currency-logo-32x32', 'src',
+                                raise_err=True)
+
+        return logo_url.rsplit('/', 1)[-1].split('.')[0]
 
     def download_logo(self, currency, size=64, imagepath=None):
         """Download currency logo
@@ -899,15 +935,18 @@ class Pymarketcap(object):
         if self._is_symbol(currency):
             currency = self.correspondences[currency]
 
-        url_schema = "https://files.coinmarketcap.com/static/img/coins/%dx%d/%s.png"
-        url = url_schema % (size, size, currency)
-        req = self.session.get(url, proxies=self.proxies, stream=True, timeout=self.timeout)
+        coin_id = self.coin_id(currency)
+        url_schema = "https://files.coinmarketcap.com/static/img/coins/{}x{}/{}.png"
+        url = url_schema.format(size, size, coin_id)
+        req = self.session.get(url, proxies=self.proxies, stream=True,
+                               timeout=self.timeout)
         if req.status_code == 200:
             if not imagepath:
                 imagepath = "%s.png" % currency
             else:
                 if imagepath[-4:] != ".png":
-                    raise ValueError("The imagepath param must be in .png format")
+                    raise ValueError(
+                        "The imagepath param must be in .png format")
             with open(imagepath, "wb") as image:
                 for chunk in req.iter_content(1024):
                     image.write(chunk)
