@@ -102,7 +102,7 @@ class Pymarketcap(object):
             "BTBc": "bitbase",
         }
         response = {}
-        url = "https://files.coinmarketcap.com/generated/search/quick_search.json"
+        url = "https://s2.coinmarketcap.com/generated/search/quick_search.json"
         currencies = self.session.get(url, proxies=self.proxies).json()
         for currency in currencies:
             response[currency["symbol"]] = currency["slug"].replace(" ", "")
