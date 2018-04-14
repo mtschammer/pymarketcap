@@ -919,8 +919,13 @@ class Pymarketcap(object):
         coin_url = "https://coinmarketcap.com/currencies/{}/".format(coin)
 
         html = self._html(coin_url)
-        logo_url = self._select(html, '.currency-logo-32x32', 'src',
+
+        try:
+            logo_url = self._select(html, '.currency-logo-32x32', 'src',
                                 raise_err=True)
+        except IndexError:
+            logo_url = self._select(html, '.logo-32x32', 'src',
+                                    raise_err=True)
 
         return logo_url.rsplit('/', 1)[-1].split('.')[0]
 
