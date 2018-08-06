@@ -127,150 +127,6 @@ class Pymarketcap(object):
 
     #######   API METHODS   #######
 
-    async def _async_scrape_tickers(self):
-        def _clean(text):
-            return text.replace('\n', '').replace('*', '').strip()
-
-        def _is_none(elem):
-            return None if elem in["None", "?"] else elem
-
-        def _process_row(row):
-            def _rank(cols):
-                # 1. rank (no class) -> just text of td
-                return int(_clean(cols[0].text))
-
-            def _slug_name_symbol(cols):
-                # 2.  .currency-name, data-sort=Full name
-                #        .currency-symbol -> a href=link/slug ('/currencies/<slug>'), text=symbol,
-                slug = self._select(cols[1], '.currency-symbol a',
-                                    'href').replace('/currencies/', '').replace(
-                    '/', '')
-                name = cols[1]['data-sort']
-                symbol = _clean(cols[1].select('.currency-symbol')[0].text)
-
-                assert len(name) > 0 and len(name) > 0 and len(
-                    name) > 0, "Slug/Name/Symbol error: {} - {} - {}".format(
-                    slug, name, symbol)
-
-                return slug, name, symbol
-
-            # 3. symbol (ignore)
-
-            def _market_cap(cols):
-                # 4. .market-cap data-btc="10725.8459771" data-sort="80495256.3896" data-usd="80495256.3896"
-                mcap = cols[3]
-                assert 'market-cap' in mcap.attrs['class'], "Market cap not found"
-                return _is_none(mcap['data-btc']), _is_none(mcap['data-usd'])
-
-            def _price(cols):
-                # 5. price (no class) -> a.price data-btc="0.000268146149427" data-usd="2.01238140974"
-                price = cols[4].select('.price')
-                assert len(price) > 0, "Price not found"
-
-                price = price[0]
-                return _is_none(price['data-btc']), _is_none(price['data-usd'])
-
-            def _circulating_supply(cols):
-                # 6. .circulating-supply -> span data-supply="40000000.0"
-                circulating_supply = cols[5]
-                assert 'circulating-supply' in circulating_supply.attrs[
-                    'class'], "Circulating supply not found"
-
-                circulating_supply = circulating_supply.select_one('span')
-
-                assert circulating_supply, "Circulating supply (span)" \
-                                           " not found"
-
-                return _is_none(circulating_supply['data-supply'])
-
-
-            def _volume(cols):
-                # 7. volume (no class) -> a.volume data-btc="486.651321527" data-usd="3652217.54837"
-                vol = cols[6].select_one('.volume')
-
-                assert vol, "Volume not found"
-
-                return _is_none(vol['data-btc']), _is_none(vol['data-usd'])
-
-            def _percent_change(cols, index):
-                # 8. .percent-change data-percentusd="0.94" data-sort="0.939722" data-symbol="NULS" data-timespan="1h"
-                # 9. .percent-change data-percentusd="0.28" data-sort="0.279027" data-symbol="NULS" data-timespan="24h"
-                # 10. .percent-change data-percentusd="-19.86" data-sort="-19.8571" data-symbol="NULS" data-timespan="7d"
-                change_percent = cols[index]
-
-                if not 'percent-change' in change_percent.attrs['class']:
-                    if not _clean(change_percent.text) == "?":
-                        raise AssertionError("Change percent not found ({})".format(index))
-                    else:
-                        return None
-
-                spans = {7: '1h', 8: '24h', 9: '7d'}
-
-                assert change_percent['data-timespan'] == spans[
-                    index], "Wrong timespan"
-
-                return change_percent['data-sort']
-
-            def _id(cols):
-                # <td class="more-options-cell dropdown" data-more-options="" data-cc-id="2962" data-cc-slug="chex">
-                opts = cols[10]
-
-                assert 'more-options-cell' in opts.attrs[
-                    'class'], "Options not found"
-
-                return int(opts['data-cc-id'])
-
-            cols = row.select('td')
-
-            slug, name, symbol = _slug_name_symbol(cols)
-            market_cap_btc, market_cap_usd = _market_cap(cols)
-            price_cap_btc, price_cap_usd = _price(cols)
-            volume_btc, volume_usd = _volume(cols)
-
-            processed_row = {
-                'id': _id(cols),
-                'rank': _rank(cols),
-                'slug': slug,
-                'name': name,
-                'symbol': symbol,
-                'market_cap_btc': market_cap_btc,
-                'market_cap_usd': market_cap_usd,
-                'price_btc': price_cap_btc,
-                'price_usd': price_cap_usd,
-                'circulating_supply': _circulating_supply(cols),
-                'volume_btc': volume_btc,
-                'volume_usd': volume_usd,
-                'percent_change_1h': _percent_change(cols, 7),
-                'percent_change_24h': _percent_change(cols, 8),
-                'percent_change_7d': _percent_change(cols, 9),
-            }
-
-            return processed_row
-
-        html = self._html(self.urls['all_coins_ticker'])
-        coin_rows = html.select('tbody tr')
-        processed_rows = []
-
-        with concurrent.futures.ThreadPoolExecutor(
-                max_workers=50) as executor:
-            loop = asyncio.get_event_loop()
-            futures = [
-                loop.run_in_executor(
-                    executor,
-                    _process_row,
-                    row
-                )
-                for row in coin_rows
-            ]
-            for processed_row in await asyncio.gather(*futures):
-                processed_rows.append(processed_row)
-
-        return processed_rows
-
-    def ticker_scraper(self):
-        loop = asyncio.get_event_loop()
-        return loop.run_until_complete(self._async_scrape_tickers())
-
     def ticker(self, currency=None, convert=None, limit=0):
         """Get currencies with other aditional data.
 
@@ -539,6 +395,174 @@ class Pymarketcap(object):
                         'price_usd': price, 'percent_change': percent}
             response.append(currency)
         return response
+
+    async def _async_scrape_tickers(self):
+        def _clean(text):
+            return text.replace('\n', '').replace('*', '').strip()
+
+        def _is_none(elem):
+            return None if elem in ["None", "?"] else elem
+
+        def _process_row(row):
+            def _rank(cols):
+                # 1. rank (no class) -> just text of td
+                return int(_clean(cols[0].text))
+
+            def _slug_name_symbol(cols):
+                # 2.  .currency-name, data-sort=Full name
+                #        .currency-symbol -> a href=link/slug ('/currencies/<slug>'), text=symbol,
+                slug = self._select(cols[1], '.currency-symbol a',
+                                    'href').replace('/currencies/', '').replace(
+                    '/', '')
+                name = cols[1]['data-sort']
+                symbol = _clean(cols[1].select('.currency-symbol')[0].text)
+
+                assert len(name) > 0 and len(name) > 0 and len(
+                    name) > 0, "Slug/Name/Symbol error: {} - {} - {}".format(
+                    slug, name, symbol)
+
+                return slug, name, symbol
+
+            # 3. symbol (ignore)
+
+            def _market_cap(cols):
+                # 4. .market-cap data-btc="10725.8459771" data-sort="80495256.3896" data-usd="80495256.3896"
+                mcap = cols[3]
+                assert 'market-cap' in mcap.attrs[
+                    'class'], "Market cap not found"
+                return _is_none(mcap['data-btc']), _is_none(mcap['data-usd'])
+
+            def _price(cols):
+                # 5. price (no class) -> a.price data-btc="0.000268146149427" data-usd="2.01238140974"
+                price = cols[4].select('.price')
+                assert len(price) > 0, "Price not found"
+
+                price = price[0]
+                return _is_none(price['data-btc']), _is_none(price['data-usd'])
+
+            def _circulating_supply(cols):
+                # 6. .circulating-supply -> span data-supply="40000000.0"
+                circulating_supply = cols[5]
+                assert 'circulating-supply' in circulating_supply.attrs[
+                    'class'], "Circulating supply not found"
+
+                circulating_supply = circulating_supply.select_one('span')
+
+                assert circulating_supply, "Circulating supply (span)" \
+                                           " not found"
+
+                return _is_none(circulating_supply['data-supply'])
+
+            def _volume(cols):
+                # 7. volume (no class) -> a.volume data-btc="486.651321527" data-usd="3652217.54837"
+                vol = cols[6].select_one('.volume')
+
+                assert vol, "Volume not found"
+
+                return _is_none(vol['data-btc']), _is_none(vol['data-usd'])
+
+            def _percent_change(cols, index):
+                # 8. .percent-change data-percentusd="0.94" data-sort="0.939722" data-symbol="NULS" data-timespan="1h"
+                # 9. .percent-change data-percentusd="0.28" data-sort="0.279027" data-symbol="NULS" data-timespan="24h"
+                # 10. .percent-change data-percentusd="-19.86" data-sort="-19.8571" data-symbol="NULS" data-timespan="7d"
+                change_percent = cols[index]
+
+                if not 'percent-change' in change_percent.attrs['class']:
+                    if not _clean(change_percent.text) == "?":
+                        raise AssertionError(
+                            "Change percent not found ({})".format(index))
+                    else:
+                        return None
+
+                spans = {7: '1h', 8: '24h', 9: '7d'}
+
+                assert change_percent['data-timespan'] == spans[
+                    index], "Wrong timespan"
+
+                return change_percent['data-sort']
+
+            def _id(cols):
+                # <td class="more-options-cell dropdown" data-more-options="" data-cc-id="2962" data-cc-slug="chex">
+                opts = cols[10]
+
+                assert 'more-options-cell' in opts.attrs[
+                    'class'], "Options not found"
+
+                return int(opts['data-cc-id'])
+
+            cols = row.select('td')
+
+            slug, name, symbol = _slug_name_symbol(cols)
+            market_cap_btc, market_cap_usd = _market_cap(cols)
+            price_cap_btc, price_cap_usd = _price(cols)
+            volume_btc, volume_usd = _volume(cols)
+
+            processed_row = {
+                'id': _id(cols),
+                'rank': _rank(cols),
+                'slug': slug,
+                'name': name,
+                'symbol': symbol,
+                'market_cap_btc': market_cap_btc,
+                'market_cap_usd': market_cap_usd,
+                'price_btc': price_cap_btc,
+                'price_usd': price_cap_usd,
+                'circulating_supply': _circulating_supply(cols),
+                'volume_btc': volume_btc,
+                'volume_usd': volume_usd,
+                'percent_change_1h': _percent_change(cols, 7),
+                'percent_change_24h': _percent_change(cols, 8),
+                'percent_change_7d': _percent_change(cols, 9),
+            }
+
+            return processed_row
+
+        html = self._html(self.urls['all_coins_ticker'])
+        coin_rows = html.select('tbody tr')
+        processed_rows = []
+
+        with concurrent.futures.ThreadPoolExecutor(
+                max_workers=50) as executor:
+            loop = asyncio.get_event_loop()
+            futures = [
+                loop.run_in_executor(
+                    executor,
+                    _process_row,
+                    row
+                )
+                for row in coin_rows
+            ]
+            for processed_row in await asyncio.gather(*futures):
+                processed_rows.append(processed_row)
+
+        return processed_rows
+
+    def ticker_scraper(self):
+        loop = asyncio.get_event_loop()
+        return loop.run_until_complete(self._async_scrape_tickers())
+
+    def supply_scraper(self, slug):
+        def _find_value(html):
+            return html.find_next_sibling().select_one('span')[
+                'data-format-value']
+
+        html = self._html(
+            'https://coinmarketcap.com/currencies/{}/'.format(slug))
+
+        items = html.select('.coin-summary-item-header')
+        total_supply = None
+        max_supply = None
+
+        for item in items:
+            if item.text == "Total Supply":
+                total_supply = _find_value(item)
+            elif item.text == "Max Supply":
+                max_supply = _find_value(item)
+
+        return {
+            'total_supply': total_supply,
+            'max_supply': max_supply
+        }
 
     def ranks(self, *args):
         """Returns data from gainers and losers rankings:
